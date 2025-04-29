@@ -1,0 +1,15 @@
+# Core dependencies
+SQLAlchemy>=1.4
+psycopg2>=2.9
+
+# GUI
+tkcalendar>=1.6.1
+
+# Testing
+pytest>=8.0
+
+# Optional (for better Unicode/encoding support)
+pyyaml>=6.0
+
+# Optional (for logging prettiness or improvements)
+rich>=13.0
