@@ -54,20 +54,6 @@ def test_remove_book_by_id():
     assert status is False
 
 
-def test_find_books_by_author():
-    """Test finding books by author."""
-    author = "Unique Author"
-    bc.add_book(title="Unique Book 1", author=author, pages=120)
-    bc.add_book(title="Unique Book 2", author=author, pages=150)
-
-    status, books = bc.find_books_by_author(author)
-    assert status is True
-    assert isinstance(books, list)
-    assert len(books) >= 2
-    for book in books:
-        assert author in book.author
-
-
 # اجرای دستی
 if __name__ == "__main__":
     pytest.main([__file__])

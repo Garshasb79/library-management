@@ -1,99 +1,152 @@
 """
 controller/member_controller.py
-------------------------------
-Handles all business logic related to Member entities.
-Provides CRUD operations and member lookup utilities.
-Logs operations using the shared Logger.
+-------------------------------
+Handles business logic related to Member entities.
+
+Provides CRUD operations and lookup functionality for members.
+All operations are logged via a shared Logger instance.
 """
 
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 from model.entity import Member, Logger
 from model.da import DataAccess
 
 
 def add_member(name: str, family: str) -> Tuple[bool, Union[Member, str]]:
-    """Create and save a new member."""
+    """
+    Create and save a new member.
+
+    Args:
+        name (str): Member's first name.
+        family (str): Member's family name.
+
+    Returns:
+        Tuple[bool, Union[Member, str]]: (True, Member) on success,
+                                         (False, error message) on failure.
+    """
     try:
         new_member = Member(name=name, family=family)
-        member_da = DataAccess(Member)
-        member_da.save(new_member)
+        DataAccess(Member).save(new_member)
         Logger.info(f"Member {new_member} saved.")
         return True, new_member
     except Exception as e:
-        Logger.error(f"{e} Not saved.")
+        Logger.error(f"{e} - Member not saved.")
         return False, str(e)
 
 
 def edit_member(id: int, name: str, family: str) -> Tuple[bool, Union[Member, str]]:
-    """Update an existing member by ID."""
+    """
+    Update an existing member by ID.
+
+    Args:
+        id (int): Member ID.
+        name (str): Updated first name.
+        family (str): Updated family name.
+
+    Returns:
+        Tuple[bool, Union[Member, str]]: (True, updated Member) or (False, error message).
+    """
     try:
-        new_member = Member(name=name, family=family)
-        new_member.id = id
-        member_da = DataAccess(Member)
-        member_da.edit(new_member)
-        Logger.info(f"Member {new_member} edited.")
-        return True, new_member
+        updated_member = Member(name=name, family=family)
+        updated_member.id = id
+        DataAccess(Member).edit(updated_member)
+        Logger.info(f"Member {updated_member} edited.")
+        return True, updated_member
     except Exception as e:
-        Logger.error(f"{e} Not edited.")
+        Logger.error(f"{e} - Member not edited.")
         return False, str(e)
 
 
 def remove_member_by_id(id: int) -> Tuple[bool, Union[Member, str]]:
-    """Remove a member from the database by ID."""
+    """
+    Delete a member by ID.
+
+    Args:
+        id (int): Member ID to remove.
+
+    Returns:
+        Tuple[bool, Union[Member, str]]: (True, removed Member) or (False, error message).
+    """
     try:
-        member_da = DataAccess(Member)
-        member = member_da.find_by_id(id)
+        dao = DataAccess(Member)
+        member = dao.find_by_id(id)
         if member:
-            member_da.remove_by_id(id)
-            Logger.info(f"Member by id {id} removed.")
+            dao.remove_by_id(id)
+            Logger.info(f"Member with ID {id} removed.")
             return True, member
         else:
-            Logger.warning(f"No member by id {id} found.")
-            return False, f"No member by id {id} found."
+            Logger.warning(f"No member found with ID {id}.")
+            return False, f"No member found with ID {id}."
     except Exception as e:
-        Logger.error(f"{e} Member by id {id} not removed.")
+        Logger.error(f"{e} - Failed to remove member with ID {id}.")
         return False, str(e)
 
 
-def find_all_members() -> Tuple[bool, Union[list, str]]:
-    """Retrieve all members from the database."""
+def find_all_members() -> Tuple[bool, Union[List[Tuple[int, str, str]], str]]:
+    """
+    Retrieve all members from the database.
+
+    Returns:
+        Tuple[bool, Union[List[Tuple], str]]:
+            (True, list of member tuples) or (False, error message).
+            Each tuple is: (id, name, family)
+    """
     try:
-        member_da = DataAccess(Member)
-        member_list = member_da.find_all()
-        Logger.info(f"{len(member_list)} members found.")
-        return True, member_list
+        members = DataAccess(Member).find_all()
+        result = []
+        for m in members:
+            try:
+                result.append((m.id, m.name, m.family))
+            except Exception:
+                result.append(("[Error]", "", ""))
+        Logger.info(f"{len(result)} members retrieved.")
+        return True, result
     except Exception as e:
-        Logger.error(f"{e} While finding all members.")
+        Logger.error(f"{e} - Error retrieving all members.")
         return False, str(e)
 
 
 def find_member_by_id(id: int) -> Tuple[bool, Union[Member, str]]:
-    """Find a member by their ID."""
+    """
+    Retrieve a member by their ID.
+
+    Args:
+        id (int): Member ID to search.
+
+    Returns:
+        Tuple[bool, Union[Member, str]]: (True, Member) or (False, error message).
+    """
     try:
-        member_da = DataAccess(Member)
-        member = member_da.find_by_id(id)
+        member = DataAccess(Member).find_by_id(id)
         if member:
             Logger.info(f"Member {member} found.")
             return True, member
         else:
-            Logger.warning(f"No member by id {id} found.")
-            return False, f"No member by id {id} found."
+            Logger.warning(f"No member found with ID {id}.")
+            return False, f"No member found with ID {id}."
     except Exception as e:
-        Logger.error(f"{e} Member {id} not found.")
+        Logger.error(f"{e} - Error finding member with ID {id}.")
         return False, str(e)
 
 
-def find_members_by_family(family: str) -> Tuple[bool, Union[list, str]]:
-    """Find all members by their family name."""
+def find_members_by_family(family: str) -> Tuple[bool, Union[List[Member], str]]:
+    """
+    Find all members with a matching family name.
+
+    Args:
+        family (str): Family name to filter by.
+
+    Returns:
+        Tuple[bool, Union[List[Member], str]]: (True, list of members) or (False, error message).
+    """
     try:
-        member_da = DataAccess(Member)
-        members = member_da.find_all_by(Member._family == family)
+        members = DataAccess(Member).find_all_by(Member._family == family)
         if members:
-            Logger.info(f"{len(members)} member/s {members} found by {family}.")
+            Logger.info(f"{len(members)} members found with family name '{family}'.")
             return True, members
         else:
-            Logger.warning(f"No member by family {family} found.")
-            return False, f"No member by family {family} found."
+            Logger.warning(f"No members found with family name '{family}'.")
+            return False, f"No members found with family name '{family}'."
     except Exception as e:
-        Logger.error(f"{e} Member {family} not found.")
+        Logger.error(f"{e} - Error finding members by family '{family}'.")
         return False, str(e)

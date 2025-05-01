@@ -1,12 +1,15 @@
-""" 
+"""
 controller/borrow_controller.py
 -------------------------------
-Handles the business logic for borrowing records. Provides
-functions for creating, editing, deleting, and searching
-borrows. Uses the Logger for operation tracking.
+Handles the business logic for borrowing records.
+
+This module provides functions to create, edit, delete, and retrieve
+borrow records. It ensures proper validation and interaction between
+members, books, and borrow entries. Logging is performed for all actions.
 """
 
 from typing import Tuple, Union, List
+from datetime import date
 from model.entity import Member, Book, Borrow, Logger
 from model.da import DataAccess
 from model.da.session import get_session
@@ -14,120 +17,146 @@ from sqlalchemy.orm import joinedload
 
 
 def add_borrow(
-    member_id: int, book_id: int, borrow_date, return_date
+    member_id: int, book_id: int, borrow_date: date, return_date: Union[date, None]
 ) -> Tuple[bool, Union[Borrow, str]]:
-    """Create and save a new borrow record."""
+    """
+    Create and save a new borrow record.
+
+    Args:
+        member_id (int): ID of the borrowing member.
+        book_id (int): ID of the borrowed book.
+        borrow_date (date): Date of borrowing.
+        return_date (date | None): Optional return date.
+
+    Returns:
+        Tuple[bool, Borrow or error message].
+    """
     try:
-        member_da = DataAccess(Member)
-        member = member_da.find_by_id(member_id)
-        book_da = DataAccess(Book)
-        book = book_da.find_by_id(book_id)
+        member = DataAccess(Member).find_by_id(member_id)
+        book = DataAccess(Book).find_by_id(book_id)
         new_borrow = Borrow(member, book, borrow_date)
         if return_date is not None:
             new_borrow.return_date = return_date
-        borrow_da = DataAccess(Borrow)
-        borrow_da.save(new_borrow)
+
+        DataAccess(Borrow).save(new_borrow)
         Logger.info(f"Borrow {new_borrow} saved.")
         return True, new_borrow
     except Exception as e:
-        Logger.error(f"{e} Not saved.")
+        Logger.error(f"{e} - Borrow not saved.")
         return False, str(e)
 
 
 def edit_borrow(
-    id: int, member_id: int, book_id: int, borrow_date, return_date
+    id: int,
+    member_id: int,
+    book_id: int,
+    borrow_date: date,
+    return_date: Union[date, None]
 ) -> Tuple[bool, Union[Borrow, str]]:
-    """Edit an existing borrow record."""
+    """
+    Edit an existing borrow record.
+
+    Args:
+        id (int): ID of the borrow to update.
+        member_id (int): Updated member ID.
+        book_id (int): Updated book ID.
+        borrow_date (date): Updated borrow date.
+        return_date (date | None): Optional return date.
+
+    Returns:
+        Tuple[bool, Borrow or error message].
+    """
     try:
-        member_da = DataAccess(Member)
-        member = member_da.find_by_id(member_id)
-        book_da = DataAccess(Book)
-        book = book_da.find_by_id(book_id)
-        new_borrow = Borrow(member, book, borrow_date)
-        if return_date and return_date != "None":
-            new_borrow.return_date = return_date
-        new_borrow.id = id
-        borrow_da = DataAccess(Borrow)
-        borrow_da.edit(new_borrow)
-        Logger.info(f"Borrow {new_borrow} edited.")
-        return True, new_borrow
+        member = DataAccess(Member).find_by_id(member_id)
+        book = DataAccess(Book).find_by_id(book_id)
+        updated_borrow = Borrow(member, book, borrow_date)
+        updated_borrow.id = id
+        if return_date:
+            updated_borrow.return_date = return_date
+
+        DataAccess(Borrow).edit(updated_borrow)
+        Logger.info(f"Borrow {updated_borrow} edited.")
+        return True, updated_borrow
     except Exception as e:
-        Logger.error(f"{e} Not edited.")
+        Logger.error(f"{e} - Borrow not edited.")
         return False, str(e)
 
 
 def remove_borrow_by_id(id: int) -> Tuple[bool, Union[Borrow, str]]:
-    """Delete a borrow record by ID."""
+    """
+    Delete a borrow record by ID.
+
+    Args:
+        id (int): ID of the borrow to delete.
+
+    Returns:
+        Tuple[bool, Borrow or error message].
+    """
     try:
-        borrow_da = DataAccess(Borrow)
-        borrow = borrow_da.find_by_id(id)
+        dao = DataAccess(Borrow)
+        borrow = dao.find_by_id(id)
         if borrow:
-            borrow_da.remove_by_id(id)
-            Logger.info(f"Borrow by id {id} removed.")
+            dao.remove_by_id(id)
+            Logger.info(f"Borrow with ID {id} removed.")
             return True, borrow
         else:
-            Logger.warning(f"No borrow by id {id} found.")
-            return False, f"No borrow by id {id} found."
+            Logger.warning(f"No borrow found with ID {id}.")
+            return False, f"No borrow found with ID {id}."
     except Exception as e:
-        Logger.error(f"{e} Borrow by id {id} not removed.")
+        Logger.error(f"{e} - Failed to remove borrow with ID {id}.")
         return False, str(e)
 
 
-def find_all_borrows() -> Tuple[bool, Union[List[Borrow], str]]:
-    """Retrieve all borrow records."""
+def find_all_borrows() -> Tuple[bool, Union[List[Tuple[int, int, int, date, Union[date, None]]], str]]:
+    """
+    Retrieve all borrow records, with member and book details loaded.
+
+    Returns:
+        Tuple[bool, List of borrow tuples or error string].
+        Each tuple contains: (borrow_id, member_id, book_id, borrow_date, return_date)
+    """
     try:
-        borrow_da = DataAccess(Borrow)
-        borrow_list = borrow_da.find_all()
-        Logger.info(f"{len(borrow_list)} borrows found.")
-        return True, borrow_list
+        with get_session() as session:
+            borrows = (
+                session.query(Borrow)
+                .options(joinedload(Borrow.member), joinedload(Borrow.book))
+                .all()
+            )
+
+            data = []
+            for b in borrows:
+                try:
+                    data.append(
+                        (b.id, b.member.id, b.book.id, b.borrow_date, b.return_date)
+                    )
+                except Exception:
+                    data.append(("[Error]", "", "", "", ""))
+
+            Logger.info(f"{len(data)} borrows retrieved.")
+            return True, data
     except Exception as e:
-        Logger.error(f"{e} While finding all borrows.")
+        Logger.error(f"{e} - Error retrieving borrows.")
         return False, str(e)
 
 
 def find_borrow_by_id(id: int) -> Tuple[bool, Union[Borrow, str]]:
-    """Retrieve a single borrow by ID."""
+    """
+    Retrieve a single borrow record by ID.
+
+    Args:
+        id (int): ID of the borrow record.
+
+    Returns:
+        Tuple[bool, Borrow or error message].
+    """
     try:
-        borrow_da = DataAccess(Borrow)
-        borrow = borrow_da.find_by_id(id)
+        borrow = DataAccess(Borrow).find_by_id(id)
         if borrow:
             Logger.info(f"Borrow {borrow} found.")
             return True, borrow
         else:
-            Logger.warning(f"No borrow by id {id} found.")
-            return False, f"No borrow by id {id} found."
+            Logger.warning(f"No borrow found with ID {id}.")
+            return False, f"No borrow found with ID {id}."
     except Exception as e:
-        Logger.error(f"{e} Borrow {id} not found.")
-        return False, str(e)
-
-
-def find_by_member_id(member_id: int) -> Tuple[bool, Union[List[Borrow], str]]:
-    """Find all borrow records by member ID."""
-    try:
-        borrow_da = DataAccess(Borrow)
-        borrows = borrow_da.find_all_by(Borrow.member_id == member_id)
-        if borrows:
-            Logger.info(f"{len(borrows)} borrow/s found by id {member_id}.")
-            return True, borrows
-        else:
-            Logger.warning(f"No member by id {member_id} found.")
-            return False, f"No member by id {member_id} found."
-    except Exception as e:
-        Logger.error(f"{e} Borrow for id {member_id} not found.")
-        return False, str(e)
-
-
-def find_by_book_id(book_id: int) -> Tuple[bool, Union[List[Borrow], str]]:
-    """Find all borrow records by book ID."""
-    try:
-        borrow_da = DataAccess(Borrow)
-        borrows = borrow_da.find_all_by(Borrow.book_id == book_id)
-        if borrows:
-            Logger.info(f"{len(borrows)} borrow/s found by id {book_id}.")
-            return True, borrows
-        else:
-            Logger.warning(f"No book by id {book_id} found.")
-            return False, f"No book by id {book_id} found."
-    except Exception as e:
-        Logger.error(f"{e} Borrow for id {book_id} not found.")
+        Logger.error(f"{e} - Borrow not found.")
         return False, str(e)

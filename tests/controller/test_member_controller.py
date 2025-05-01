@@ -4,6 +4,7 @@ Test: controller/member_controller.py
 Integration tests for member controller functionality.
 """
 
+from typing import Tuple
 import pytest
 from controller import member_controller as mc
 from model.entity.member import Member
@@ -50,7 +51,7 @@ def test_find_all_members():
     status, members = mc.find_all_members()
     assert status is True
     assert isinstance(members, list)
-    assert all(isinstance(m, Member) for m in members)
+    assert all(isinstance(m, Tuple) for m in members)
 
 
 # اجرای دستی
