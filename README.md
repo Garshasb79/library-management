@@ -137,18 +137,5 @@ Software Developer & Python Enthusiast 🚀
 
 ## 📜 License
 
-This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
-You are free to:
-
-Share — copy and redistribute the material in any medium or format
-
-Under the following terms:
-
-Attribution — You must give appropriate credit.
-
-NonCommercial — You may not use the material for commercial purposes.
-
-NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
-
-For commercial use or licensing requests, please contact: garshasb79@gmail.com
